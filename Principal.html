@@ -2,6 +2,7 @@
 <html lang="pt">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CashMat - Página Principal</title>
   <style>
     * {
@@ -18,44 +19,45 @@
       justify-content: center;
       align-items: center;
       height: 100vh;
+      font-size: 1rem; /* base de fonte aumentada */
     }
 
     .container {
       background-color: rgba(255, 255, 255, 0.05);
-      padding: 40px;
-      border-radius: 15px;
-      box-shadow: 0 0 20px rgba(0, 255, 213, 0.4);
+      padding: 2rem;
+      border-radius: 1rem;
+      box-shadow: 0 0 1.25rem rgba(0, 255, 213, 0.4);
       width: 90%;
-      max-width: 400px;
+      max-width: 420px;
       text-align: center;
     }
 
     h1 {
       color: #00ffd5;
-      margin-bottom: 10px;
-      font-size: 32px;
+      margin-bottom: 0.5rem;
+      font-size: 2rem;
     }
 
     h2 {
-      font-size: 20px;
-      margin-bottom: 20px;
+      font-size: 1.2rem;
+      margin-bottom: 1rem;
     }
 
     .saldo {
-      font-size: 18px;
-      margin-bottom: 20px;
+      font-size: 1rem;
+      margin-bottom: 1.2rem;
       color: #ccc;
     }
 
     button {
       width: 100%;
-      padding: 12px;
-      margin: 8px 0;
+      padding: 0.75rem;
+      margin: 0.5rem 0;
       background-color: #00ffd5;
       border: none;
-      border-radius: 8px;
+      border-radius: 0.5rem;
       font-weight: bold;
-      font-size: 16px;
+      font-size: 1rem;
       cursor: pointer;
       transition: background-color 0.3s ease;
     }
@@ -65,22 +67,22 @@
     }
 
     .modo-jogo, .ranking {
-      margin-top: 30px;
+      margin-top: 2rem;
     }
 
     .modo-jogo button {
       width: 100%;
-      margin: 8px 0;
+      margin: 0.5rem 0;
     }
 
     ol {
       text-align: left;
-      padding-left: 20px;
+      padding-left: 1.2rem;
     }
 
     ol li {
-      margin: 5px 0;
-      font-size: 14px;
+      margin: 0.4rem 0;
+      font-size: 0.95rem;
     }
   </style>
 </head>
@@ -96,8 +98,8 @@
 
     <div class="modo-jogo">
       <h3>Modos de Jogo</h3>
-      <button onclick="window.location.href='passos-da-riqueza.html'">💰 Passos da Riqueza</button>
-      <button onclick="window.location.href='torneio-milionario.html'">🏆 Torneio Milionário</button>
+      <button aria-label="Jogar Passos da Riqueza" onclick="window.location.href='passos-da-riqueza.html'">💰 Passos da Riqueza</button>
+      <button aria-label="Jogar Torneio Milionário" onclick="window.location.href='torneio-milionario.html'">🏆 Torneio Milionário</button>
     </div>
 
     <div class="ranking">
@@ -142,7 +144,7 @@
           if (snapshot.exists()) {
             const dados = snapshot.val();
             const nome = dados.nome || "Jogador";
-            const saldo = dados.saldo || 0;
+            const saldo = parseFloat(dados.saldo) || 0;
             document.getElementById("nomeJogador").innerText = nome;
             document.getElementById("saldoJogador").innerText = `${saldo.toFixed(2)} MZN`;
           } else {
@@ -151,47 +153,53 @@
         });
 
         const rankingRef = ref(database, 'ranking');
-onValue(rankingRef, (snapshot) => {
-  if (snapshot.exists()) {
-    const data = snapshot.val();
-    const jogadoresArray = Object.entries(data)
-      .filter(([_, j]) => j.nome && j.valor !== undefined)
-      .map(([uid, j]) => ({ uid, nome: j.nome, recorde: j.valor }));
+        onValue(rankingRef, (snapshot) => {
+          const lista = document.getElementById("rankingLista");
+          if (snapshot.exists()) {
+            const data = snapshot.val();
+            const jogadoresArray = Object.entries(data)
+              .filter(([_, j]) => j.nome && j.valor !== undefined)
+              .map(([uid, j]) => ({ uid, nome: j.nome, recorde: j.valor }));
 
-    jogadoresArray.sort((a, b) => b.recorde - a.recorde);
+            jogadoresArray.sort((a, b) => b.recorde - a.recorde);
 
-    const lista = document.getElementById("rankingLista");
-    lista.innerHTML = "";
+            lista.innerHTML = "";
+            jogadoresArray.slice(0, 5).forEach((jogador, index) => {
+              const item = document.createElement("li");
+              let prefixo;
+              if (index === 0) prefixo = "🥇";
+              else if (index === 1) prefixo = "🥈";
+              else if (index === 2) prefixo = "🥉";
+              else prefixo = `${index + 1}º`;
 
-    jogadoresArray.slice(0, 5).forEach((jogador, index) => {
-      const item = document.createElement("li");
-      let prefixo;
-      if (index === 0) prefixo = "🥇";
-      else if (index === 1) prefixo = "🥈";
-      else if (index === 2) prefixo = "🥉";
-      else prefixo = `${index + 1}º`;
+              item.innerText = `${prefixo} ${jogador.nome} - ${jogador.recorde.toFixed(2)} MZN`;
+              lista.appendChild(item);
+            });
 
-      item.innerText = `${prefixo} ${jogador.nome} - ${jogador.recorde.toFixed(2)} MZN`;
-      lista.appendChild(item);
-    });
-
-    const posicaoAtual = jogadoresArray.findIndex(j => j.uid === auth.currentUser.uid);
-    if (posicaoAtual >= 5) {
-      const item = document.createElement("li");
-      item.style.marginTop = "10px";
-      item.style.fontWeight = "bold";
-      item.innerText = `Sua posição: ${posicaoAtual + 1}º - ${jogadoresArray[posicaoAtual].nome} (${jogadoresArray[posicaoAtual].recorde.toFixed(2)} MZN)`;
-      lista.appendChild(document.createElement("hr"));
-      lista.appendChild(item);
-    }
-  }
-});
+            const posicaoAtual = jogadoresArray.findIndex(j => j.uid === auth.currentUser.uid);
+            if (posicaoAtual >= 5) {
+              const item = document.createElement("li");
+              item.style.marginTop = "10px";
+              item.style.fontWeight = "bold";
+              item.innerText = `Sua posição: ${posicaoAtual + 1}º - ${jogadoresArray[posicaoAtual].nome} (${jogadoresArray[posicaoAtual].recorde.toFixed(2)} MZN)`;
+              lista.appendChild(document.createElement("hr"));
+              lista.appendChild(item);
+            }
+          } else {
+            lista.innerHTML = "<li>Nenhum dado de ranking disponível.</li>";
+          }
+        });
       }
     });
 
     window.logout = function () {
+      const btns = document.querySelectorAll("button");
+      btns.forEach(btn => btn.disabled = true);
       signOut(auth).then(() => {
         window.location.href = "login.html";
+      }).catch(() => {
+        btns.forEach(btn => btn.disabled = false);
+        alert("Erro ao sair. Tente novamente.");
       });
     };
   </script>
