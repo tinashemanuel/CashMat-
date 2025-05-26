@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <title>Retirada - CashMat</title>
+  <style>
+    body {
+      background: #1d2b3a;
+      color: white;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .container {
+      background-color: #2c3e50;
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 0 15px rgba(0, 255, 213, 0.3);
+      text-align: center;
+      width: 90%;
+      max-width: 400px;
+    }
+    h1 {
+      color: #00ffd5;
+      margin-bottom: 20px;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      background-color: #00ffd5;
+      border: none;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 16px;
+      cursor: pointer;
+      margin-bottom: 10px;
+    }
+    button:disabled {
+      background-color: #888;
+      cursor: not-allowed;
+    }
+    button:hover:not(:disabled) {
+      background-color: #00ccaa;
+    }
+    #mensagem {
+      margin-top: 20px;
+      min-height: 1.5em;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Solicitar Retirada</h1>
+    <input type="number" id="valor" placeholder="Valor para retirar" min="1" />
+    <button id="btnRetirar" disabled>Retirar</button>
+    <div id="mensagem"></div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+    import { getDatabase, ref, push, get, child, update } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCpHbnPNXlF1YGSk7qqFOP6fbwWMVORah8",
+      authDomain: "cashmat.firebaseapp.com",
+      databaseURL: "https://cashmat-default-rtdb.firebaseio.com",
+      projectId: "cashmat",
+      storageBucket: "cashmat.appspot.com",
+      messagingSenderId: "1053097963813",
+      appId: "1:1053097963813:web:82469c2eab76d3704e2acc"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const database = getDatabase(app);
+
+    const btnRetirar = document.getElementById('btnRetirar');
+    const valorInput = document.getElementById('valor');
+    const mensagem = document.getElementById('mensagem');
+
+    let uid = null;
+    let userPhone = null;
+
+    onAuthStateChanged(auth, user => {
+      if (!user) {
+        mensagem.textContent = "Usuário não autenticado. Redirecionando para login...";
+        setTimeout(() => window.location.href = "login.html", 3000);
+        btnRetirar.disabled = true;
+        return;
+      }
+      uid = user.uid;
+      if (user.email) {
+        const match = user.email.match(/\+258\d+/);
+        if (match) userPhone = match[0];
+      }
+    });
+
+    valorInput.addEventListener('input', () => {
+      const valor = parseFloat(valorInput.value);
+      btnRetirar.disabled = isNaN(valor) || valor <= 0;
+    });
+
+    btnRetirar.addEventListener('click', async () => {
+      const valor = parseFloat(valorInput.value);
+      if (!uid || isNaN(valor) || valor <= 0) return;
+
+      btnRetirar.disabled = true;
+      mensagem.textContent = "Verificando saldo...";
+
+      const userRef = ref(database, `users/${uid}`);
+
+      try {
+        const snapshot = await get(userRef);
+        if (!snapshot.exists()) throw new Error("Usuário não encontrado.");
+
+        const dados = snapshot.val();
+        const saldoAtual = parseFloat(dados.saldo) || 0;
+
+        if (valor > saldoAtual) {
+          mensagem.textContent = "Saldo insuficiente para esta retirada.";
+          btnRetirar.disabled = false;
+          return;
+        }
+
+        // Registrar retirada
+        const retiradaRef = ref(database, "retiradas");
+        const novoPedido = {
+          uid: uid,
+          telefone: userPhone || "não informado",
+          valor: valor,
+          status: "pendente",
+          timestamp: Date.now()
+        };
+
+        await push(retiradaRef, novoPedido);
+
+        // Subtrair do saldo
+        await update(userRef, { saldo: saldoAtual - valor });
+
+        mensagem.textContent = "Pedido registrado com sucesso. Aguarde aprovação.";
+        valorInput.value = "";
+
+        setTimeout(() => window.location.href = "principal.html", 3000);
+      } catch (error) {
+        mensagem.textContent = "Erro: " + error.message;
+        btnRetirar.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

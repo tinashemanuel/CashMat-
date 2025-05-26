@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <title>Depósito - CashMat</title>
+  <style>
+    body {
+      background: #1d2b3a;
+      color: white;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .container {
+      background-color: #2c3e50;
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 0 15px rgba(0, 255, 213, 0.3);
+      text-align: center;
+      width: 90%;
+      max-width: 400px;
+    }
+    h1 {
+      color: #00ffd5;
+      margin-bottom: 20px;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      background-color: #00ffd5;
+      border: none;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 16px;
+      cursor: pointer;
+      margin-bottom: 10px;
+    }
+    button:hover {
+      background-color: #00ccaa;
+    }
+    #mensagem {
+      margin-top: 20px;
+    }
+    .emola-logo {
+      width: 100px;
+      margin: 0 auto 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/M-Pesa_Logo.svg/2560px-M-Pesa_Logo.svg.png" alt="eMola" class="emola-logo">
+    <h1>Depósito via eMola</h1>
+    <input type="number" id="valorDeposito" placeholder="Valor em MZN" />
+    <button onclick="confirmarDeposito()">Depositar</button>
+    <div id="mensagem"></div>
+    <button onclick="window.location.href='principal.html'">Voltar para o Menu</button>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+    import { getDatabase, ref, push } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCpHbnPNXlF1YGSk7qqFOP6fbwWMVORah8",
+      authDomain: "cashmat.firebaseapp.com",
+      databaseURL: "https://cashmat-default-rtdb.firebaseio.com",
+      projectId: "cashmat",
+      storageBucket: "cashmat.appspot.com",
+      messagingSenderId: "1053097963813",
+      appId: "1:1053097963813:web:82469c2eab76d3704e2acc"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const auth = getAuth(app);
+
+    let currentUser = null;
+    onAuthStateChanged(auth, user => {
+      if (user) {
+        currentUser = user;
+      } else {
+        window.location.href = "login.html";
+      }
+    });
+     window.confirmarDeposito = function () {
+  if (!currentUser) {
+    alert("Usuário não autenticado.");
+    return;
+  }
+
+  const valor = parseFloat(document.getElementById('valorDeposito').value);
+  if (!valor || valor <= 0) {
+    alert("Insira um valor válido.");
+    return;
+  }
+
+  // Esconde o botão
+  document.querySelector('button[onclick="confirmarDeposito()"]').style.display = "none";
+
+  // Mostra log no console para depuração
+  console.log("Enviando depósito:", currentUser.uid, valor);
+
+  // Envia para Firebase
+  const depositoRef = ref(db, 'depositos');
+  push(depositoRef, {
+    uid: currentUser.uid,
+    valor: valor,
+    timestamp: Date.now(),
+    status: 'pendente'
+  }).then(() => {
+    // Mostra instruções após sucesso
+    document.getElementById('mensagem').innerHTML = `
+      <p>Por favor, transfira <strong>${valor.toFixed(2)} MZN</strong> para o número:</p>
+      <h2 id="numero">871238120</h2>
+      <button onclick="copiarNumero()">Copiar Número</button>
+      <p>Você tem até 5 minutos para completar a transferência.</p>
+    `;
+  }).catch(error => {
+    alert("Erro ao enviar o depósito: " + error.message);
+    console.error(error);
+  });
+};
+
+    window.copiarNumero = function () {
+      const numero = document.getElementById('numero').innerText;
+      navigator.clipboard.writeText(numero).then(() => {
+        alert("Número copiado para a área de transferência!");
+      });
+    };
+  </script>
+</body>
+</html>

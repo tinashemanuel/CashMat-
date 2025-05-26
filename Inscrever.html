@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CashMat - Inscrição</title>
+  <link rel="stylesheet" href="style.css">
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+    import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCpHbnPNXlF1YGSk7qqFOP6fbwWMVORah8",
+      authDomain: "cashmat.firebaseapp.com",
+      databaseURL: "https://cashmat-default-rtdb.firebaseio.com",
+      projectId: "cashmat",
+      storageBucket: "cashmat.firebasestorage.app",
+      messagingSenderId: "1053097963813",
+      appId: "1:1053097963813:web:82469c2eab76d3704e2acc"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getDatabase(app);
+
+    window.register = () => {
+      const nome = document.getElementById("nome").value;
+      const phone = document.getElementById("phone").value;
+      const password = document.getElementById("password").value;
+      const confirmPassword = document.getElementById("confirmPassword").value;
+      
+      // Verifica se as senhas coincidem
+      if (password !== confirmPassword) {
+        alert("As senhas não coincidem.");
+        return;
+      }
+      
+      const email = `+258${phone}@cashmat.com`;
+
+      createUserWithEmailAndPassword(auth, email, password)
+        .then((userCredential) => {
+          const userId = userCredential.user.uid;
+          set(ref(db, "users/" + userId), {
+            nome: nome,
+            telefone: phone,
+            saldo: 0
+          });
+          alert("Conta criada com sucesso!");
+          window.location.href = "login.html";
+        })
+        .catch((error) => {
+          if (error.code === 'auth/email-already-in-use') {
+            alert("Este número já está registado.");
+          } else {
+            alert("Erro ao registar: " + error.message);
+          }
+        });
+    }
+  </script>
+</head>
+<body>
+  <div class="container">
+    <h1>CashMat</h1>
+    <p>Cria a tua conta</p>
+    <input id="nome" type="text" placeholder="Nome do jogador" required/><br>
+    <input id="phone" type="tel" placeholder="Número (ex: 87XXXXXXX)" required/><br>
+    <input id="password" type="password" placeholder="Senha" required/><br>
+    <input id="confirmPassword" type="password" placeholder="Confirmar Senha" required/><br>
+    <button onclick="register()">Registrar</button>
+    <div class="link">
+      Já tens conta? <a href="login.html">Faz login</a>
+    </div>
+  </div>
+</body>
+</html>

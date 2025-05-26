@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <title>Passos da Riqueza - jogo</title>
+  <style>
+    body {
+      background: #121212;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 20px;
+    }
+    .container {
+      background: #2c2c3e;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px #00ffd5;
+      max-width: 400px;
+      margin: auto;
+    }
+    h1 {
+      color: #00ffd5;
+    }
+    #valorAcumulado.animado {
+      animation: destaque 0.6s ease-in-out;
+    }
+    @keyframes destaque {
+      0% { transform: scale(1); color: #00ffd5; }
+      50% { transform: scale(1.1); color: #ffeb3b; }
+      100% { transform: scale(1); color: #00ffd5; }
+    }
+    button {
+      margin-top: 10px;
+      padding: 10px 20px;
+      font-size: 16px;
+      background: #00ffd5;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    button:hover {
+      background: #00ccaa;
+    }
+    .opcoes button {
+      display: block;
+      width: 100%;
+      margin: 5px 0;
+      font-size: 18px;
+      background: #66aaff;
+    }
+    .opcoes button.certa { background: green; }
+    .opcoes button.errada { background: red; }
+    .opcoes button:disabled { opacity: 0.6; cursor: not-allowed; }
+  </style>
+
+  <!-- Firebase Modular SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+    import { getDatabase, ref, get, update } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCpHbnPNXlF1YGSk7qqFOP6fbwWMVORah8",
+      authDomain: "cashmat.firebaseapp.com",
+      projectId: "cashmat",
+      storageBucket: "cashmat.firebasestorage.app",
+      messagingSenderId: "1053097963813",
+      appId: "1:1053097963813:web:82469c2eab76d3704e2acc"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const database = getDatabase(app);
+
+    // Exporta para usar em outras funções
+    window.firebaseApp = { auth, database, ref, get, update, onAuthStateChanged };
+  </script>
+</head>
+<body>
+  <div class="container">
+    <h1>Passos da Riqueza</h1>
+    <p>Valor apostado: <strong id="valorApostado">...</strong> MZN</p>
+    <p>Valor acumulado: <strong id="valorAcumulado">0.00</strong> MZN</p>
+    <p>Multiplicador atual: <strong id="multiplicador">1.0</strong>x</p>
+    <p>Tempo restante: <strong id="cronometro">5</strong>s</p>
+    <div id="pergunta" style="font-size: 20px; margin-top: 20px;"></div>
+    <div class="opcoes" id="opcoes"></div>
+    <div id="retirada" style="margin-top: 20px; display: none;">
+      <button id="btnRetirar">Retirar ganhos</button>
+    </div>
+  </div>
+
+  <script>
+    // Variáveis do jogo
+    let respondeu = false;
+    let acertou = false;
+    let intervaloCronometro;
+    let tempoRestante = 5;
+    let valorBase = 0;
+    let acertosSeguidos = 0;
+    let acumulado = 0;
+    let perguntaAtual;
+
+    const operacoes = ["+", "-", "×", "÷"];
+
+    window.onload = function () {
+      // Pega valor da aposta pela URL
+      const valor = getParametro("valor");
+      if (!valor || isNaN(parseFloat(valor))) {
+        alert("Valor de aposta não encontrado.");
+        window.location.href = "principal.html";
+        return;
+      }
+
+      history.replaceState(null, "", "jogo.html"); // limpa parametro da URL
+
+      valorBase = parseFloat(valor);
+      document.getElementById("valorApostado").textContent = valorBase.toFixed(2);
+      document.getElementById("valorAcumulado").textContent = "0.00";
+      document.getElementById("multiplicador").textContent = "1.0";
+
+      mostrarNovaPergunta();
+    };
+
+    window.addEventListener("pageshow", function(event) {
+      if (event.persisted) {
+        window.location.reload();
+      }
+    });
+
+    function gerarPergunta() {
+      let a, b, op, res;
+      while (true) {
+        a = Math.floor(Math.random() * 100) + 1;
+        b = Math.floor(Math.random() * 100) + 1;
+        op = operacoes[Math.floor(Math.random() * operacoes.length)];
+        if (op === "+") { res = a + b; break; }
+        if (op === "-" && a - b >= 0) { res = a - b; break; }
+        if (op === "×") { res = a * b; break; }
+        if (op === "÷" && b !== 0 && a % b === 0) { res = a / b; break; }
+      }
+      return { texto: `${a} ${op} ${b} = ?`, resposta: res };
+    }
+
+    function mostrarNovaPergunta() {
+      respondeu = false;
+      acertou = false;
+      tempoRestante = 5;
+      document.getElementById("retirada").style.display = "none";
+
+      perguntaAtual = gerarPergunta();
+      document.getElementById("pergunta").textContent = perguntaAtual.texto;
+
+      const opcoes = [perguntaAtual.resposta];
+      while (opcoes.length < 4) {
+        let fake = perguntaAtual.resposta + Math.floor(Math.random() * 20 - 10);
+        if (!opcoes.includes(fake) && fake >= 0) opcoes.push(fake);
+      }
+      opcoes.sort(() => Math.random() - 0.5);
+
+      const container = document.getElementById("opcoes");
+      container.innerHTML = "";
+
+      opcoes.forEach(op => {
+        const btn = document.createElement("button");
+        btn.textContent = op;
+        btn.onclick = () => responder(btn, perguntaAtual.resposta);
+        container.appendChild(btn);
+      });
+
+      document.getElementById("cronometro").textContent = tempoRestante;
+
+      clearInterval(intervaloCronometro);
+      intervaloCronometro = setInterval(() => {
+        tempoRestante--;
+        document.getElementById("cronometro").textContent = tempoRestante;
+
+        if (tempoRestante <= 0) {
+          clearInterval(intervaloCronometro);
+          mostrarRespostaCorreta();
+        }
+      }, 1000);
+    }
+
+    function responder(botao, respostaCerta) {
+      if (respondeu) return;
+      respondeu = true;
+
+      const botoes = document.querySelectorAll("#opcoes button");
+      botoes.forEach(btn => btn.disabled = true);
+
+      const valorEscolhido = parseFloat(botao.textContent);
+      acertou = valorEscolhido === respostaCerta;
+
+      if (acertou) {
+        acertosSeguidos++;
+        const multiplicador = 1 + (acertosSeguidos / 10);
+        acumulado = valorBase * multiplicador;
+
+        document.getElementById("multiplicador").textContent = multiplicador.toFixed(1);
+        document.getElementById("valorAcumulado").textContent = acumulado.toFixed(2);
+        animarValor();
+      }
+    }
+
+    function mostrarRespostaCorreta() {
+      const botoes = document.querySelectorAll("#opcoes button");
+      botoes.forEach(btn => {
+        btn.disabled = true;
+        if (parseFloat(btn.textContent) === perguntaAtual.resposta) {
+          btn.classList.add("certa");
+        }
+      });
+
+      if (acertou) {
+        mostrarBotaoRetirada();
+      } else {
+        setTimeout(fimDoJogo, 1500);
+      }
+    }
+
+    function mostrarBotaoRetirada() {
+      const btnRetirada = document.getElementById("retirada");
+      btnRetirada.style.display = "block";
+
+      // Timeout para sumir o botão após 3s
+      const timeoutRetirada = setTimeout(() => {
+        btnRetirada.style.display = "none";
+        mostrarNovaPergunta();
+      }, 3000);
+
+      // Função onclick do botão retirar
+      const btn = document.getElementById("btnRetirar");
+      btn.onclick = async () => {
+        clearTimeout(timeoutRetirada);
+        await retirar();
+      };
+    }
+
+    function fimDoJogo() {
+      alert("Fim do jogo! Você perdeu tudo.");
+      window.location.replace("principal.html");
+    }
+
+    function animarValor() {
+      const el = document.getElementById("valorAcumulado");
+      el.classList.add("animado");
+      setTimeout(() => el.classList.remove("animado"), 600);
+    }
+
+    function getParametro(nome) {
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.get(nome);
+    }
+
+    async function salvarRecorde(valor) {
+      const { auth, database, ref, get, update } = window.firebaseApp;
+      const user = auth.currentUser;
+      if (!user) {
+        alert("Usuário não autenticado. Por favor, faça login.");
+        window.location.href = "login.html";
+        return false;
+      }
+
+      const userRef = ref(database, 'users/' + user.uid);
+
+      try {
+        const snapshot = await get(userRef);
+        let recordeAtual = 0;
+        if (snapshot.exists()) {
+          const dados = snapshot.val();
+          recordeAtual = dados.recorde || 0;
+        }
+
+        if (valor > recordeAtual) {
+          await update(userRef, { recorde: valor });
+          console.log("Recorde atualizado:", valor);
+        }
+        return true;
+      } catch (error) {
+        console.error("Erro ao salvar recorde:", error);
+        return false;
+      }
+    }
+
+    async function retirar() {
+      const valorARetirar = acumulado.toFixed(2);
+      const sucesso = await salvarRecorde(parseFloat(valorARetirar));
+      if (sucesso) {
+        window.location.href = `retirar.html?valor=${valorARetirar}`;
+      } else {
+        alert("Erro ao salvar recorde. Tente novamente.");
+      }
+    }
+  </script>
+</body>
+</html>

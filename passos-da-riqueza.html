@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <title>Passos da Riqueza</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #1e1e2f;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .container {
+      background: #2c2c3e;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px #00ffd5;
+      text-align: center;
+      width: 300px;
+    }
+    input, button {
+      padding: 10px;
+      margin: 10px 0;
+      width: 100%;
+      font-size: 16px;
+      border: none;
+      border-radius: 5px;
+    }
+    input {
+      background: #eee;
+    }
+    button {
+      background: #00ffd5;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    button:disabled {
+      background: #555;
+      cursor: not-allowed;
+    }
+    button:hover:enabled {
+      background: #00ccaa;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Passos da Riqueza</h1>
+    <p>Saldo atual: <strong id="saldo">$0.00</strong></p>
+    <input type="number" id="valor" placeholder="Insira o valor para jogar" />
+    <button id="btnComecar" onclick="comecarJogo()">Começar</button>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+    import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+    import {
+      getAuth,
+      onAuthStateChanged,
+    } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCpHbnPNXlF1YGSk7qqFOP6fbwWMVORah8",
+      authDomain: "cashmat.firebaseapp.com",
+      databaseURL: "https://cashmat-default-rtdb.firebaseio.com",
+      projectId: "cashmat",
+      storageBucket: "cashmat.appspot.com",
+      messagingSenderId: "1053097963813",
+      appId: "1:1053097963813:web:82469c2eab76d3704e2acc"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const database = getDatabase(app);
+
+    let uid = null;
+    let saldoAtual = 0;
+
+    const btnComecar = document.getElementById("btnComecar");
+
+    onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        window.location.href = "login.html";
+        return;
+      }
+
+      uid = user.uid;
+      const userRef = ref(database, "users/" + uid);
+
+      onValue(userRef, (snapshot) => {
+        if (snapshot.exists()) {
+          const data = snapshot.val();
+          saldoAtual = data.saldo || 0;
+          document.getElementById("saldo").innerText = `${saldoAtual.toFixed(2)} MZN`;
+        }
+      });
+    });
+
+    window.comecarJogo = () => {
+      const valor = parseFloat(document.getElementById("valor").value);
+
+      if (isNaN(valor) || valor <= 0) {
+        alert("Insira um valor válido.");
+        return;
+      }
+
+      if (valor > saldoAtual) {
+        alert("Saldo insuficiente.");
+        return;
+      }
+
+      // Desabilita o botão para evitar múltiplos cliques
+      btnComecar.disabled = true;
+
+      const novoSaldo = saldoAtual - valor;
+      const userRef = ref(database, "users/" + uid);
+
+      update(userRef, { saldo: novoSaldo })
+        .then(() => {
+          // Redireciona para o jogo.html com timestamp para evitar cache
+          window.location.href = "jogo.html?valor=" + valor + "&t=" + new Date().getTime();
+        })
+        .catch((error) => {
+          alert("Erro ao descontar saldo: " + error.message);
+          // Reabilita o botão em caso de erro
+          btnComecar.disabled = false;
+        });
+    };
+  </script>
+</body>
+</html>
