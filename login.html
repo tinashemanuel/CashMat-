@@ -2,6 +2,7 @@
 <html lang="pt">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CashMat - Login</title>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
@@ -12,7 +13,6 @@
       browserSessionPersistence
     } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 
-    // Configuração Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyCpHbnPNXlF1YGSk7qqFOP6fbwWMVORah8",
       authDomain: "cashmat.firebaseapp.com",
@@ -25,7 +25,6 @@
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
 
-    // Função de login com persistência de sessão
     window.login = () => {
       const phone = document.getElementById("phone").value.trim();
       const password = document.getElementById("password").value.trim();
@@ -57,13 +56,12 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      height: 100vh;
-      overflow: hidden;
+      min-height: 100vh;
     }
 
     .container {
       background-color: rgba(255, 255, 255, 0.05);
-      padding: 40px;
+      padding: 5vw;
       border-radius: 15px;
       box-shadow: 0 0 20px rgba(0, 255, 213, 0.4);
       width: 90%;
@@ -74,14 +72,16 @@
     h1 {
       color: #00ffd5;
       margin-bottom: 10px;
-      font-size: 32px;
+      font-size: 8vw;
       animation: slideIn 0.5s ease;
+      text-align: center;
     }
 
     p {
       margin-bottom: 30px;
-      font-size: 16px;
+      font-size: 4vw;
       color: #ccc;
+      text-align: center;
     }
 
     input {
@@ -114,6 +114,7 @@
       margin-top: 20px;
       font-size: 14px;
       color: #ddd;
+      text-align: center;
     }
 
     .link a {
