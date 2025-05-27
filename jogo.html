@@ -2,6 +2,7 @@
 <html lang="pt">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Passos da Riqueza - jogo</title>
   <style>
     body {
@@ -12,13 +13,16 @@
       padding: 20px;
     }
     .container {
-      background: #2c2c3e;
-      padding: 30px;
-      border-radius: 10px;
-      box-shadow: 0 0 10px #00ffd5;
-      max-width: 400px;
-      margin: auto;
-    }
+  background: #2c2c3e;
+  padding: 30px;
+  border-radius: 10px;
+  box-shadow: 0 0 10px #00ffd5;
+  max-width: 100%;
+  width: 100%;
+  max-width: 600px; /* aumenta a largura máxima */
+  margin: auto;
+  box-sizing: border-box;
+}
     h1 {
       color: #00ffd5;
     }
@@ -64,6 +68,7 @@
     const firebaseConfig = {
       apiKey: "AIzaSyCpHbnPNXlF1YGSk7qqFOP6fbwWMVORah8",
       authDomain: "cashmat.firebaseapp.com",
+      databaseURL: "https://cashmat-default-rtdb.firebaseio.com",
       projectId: "cashmat",
       storageBucket: "cashmat.firebasestorage.app",
       messagingSenderId: "1053097963813",
